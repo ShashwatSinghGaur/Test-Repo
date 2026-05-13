@@ -200,8 +200,12 @@ with st.sidebar:
                     if vals.empty or vals.nunique() < 2: continue
                     data_min, data_max = float(vals.min()), float(vals.max())
                     step = round((data_max - data_min) / 200, 4) or 0.01
-                    sel = st.slider(label, min_value=round(data_min,2), max_value=round(data_max,2), value=(round(data_min,2), round(data_max,2)), step=step, key=f"sl_{col}")
-                    if sel[0] > data_min or sel[1] < data_max:
+                    
+                    lo, hi = round(data_min, 2), round(data_max, 2)
+                    default_val = (lo, hi)
+                    
+                    sel = st.slider(label, min_value=lo, max_value=hi, value=default_val, step=step, key=f"sl_{col}")
+                    if sel != default_val:
                         active_slider_filters[col] = sel
                 else:
                     op = st.selectbox(label, ["—", ">", "<", ">=", "<=", "=", "Between"], key=f"op_{col}")
