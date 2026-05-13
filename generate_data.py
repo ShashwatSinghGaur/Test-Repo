@@ -62,7 +62,7 @@ NIFTY_MIDCAP150 = [
 ALL_TICKERS = list(dict.fromkeys(NIFTY100 + NIFTY_MIDCAP150))
 DATA_FILE   = "Master_Data.parquet"
 
-BUFFER_START  = date(2020, 5, 1)   
+BUFFER_START  = date(2020, 1, 1)   
 DISPLAY_START = date(2021, 1, 1)   
 
 def add_all_indicators(df):
