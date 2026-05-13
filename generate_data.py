@@ -60,14 +60,13 @@ NIFTY_MIDCAP150 = [
 ]
 
 ALL_TICKERS = list(dict.fromkeys(NIFTY100 + NIFTY_MIDCAP150))
-DATA_FILE   = "Master_Data.xlsx"
-SHEET_NAME  = "Nifty LMC 250"
+DATA_FILE   = "Master_Data.parquet"
 
 BUFFER_START  = date(2020, 5, 1)   
 DISPLAY_START = date(2021, 1, 1)   
 
 def add_all_indicators(df):
-    """Calculates exactly 50 technical indicators using pandas_ta"""
+    """Calculates exactly 50 technical indicators using pandas_ta_classic"""
     # ── 1. TREND (10) ──
     df['SMA_20'] = ta.sma(df['Close'], length=20)
     df['SMA_50'] = ta.sma(df['Close'], length=50)
@@ -83,7 +82,12 @@ def add_all_indicators(df):
         df['MACD'] = np.nan; df['MACD_Hist'] = np.nan
 
     adx = ta.adx(df['High'], df['Low'], df['Close'])
-    df['ADX_14'] = adx.iloc[:, 0] if adx is not None and not adx.empty else np.nan
+    if adx is not None and not adx.empty:
+        df['ADX_14'] = adx.iloc[:, 0]
+        df['+DI_14'] = adx.iloc[:, 1] 
+        df['-DI_14'] = adx.iloc[:, 2] 
+    else:
+        df['ADX_14'] = np.nan; df['+DI_14'] = np.nan; df['-DI_14'] = np.nan
 
     st = ta.supertrend(df['High'], df['Low'], df['Close'])
     df['Supertrend'] = st.iloc[:, 0] if st is not None and not st.empty else np.nan
@@ -162,11 +166,6 @@ def add_all_indicators(df):
     else:
         df['Elder_Bull'] = np.nan; df['Elder_Bear'] = np.nan
 
-    df['+DI_14'] = adx.iloc[:, 1] if adx is not None and not adx.empty else np.nan
-    df['-DI_14'] = adx.iloc[:, 2] if adx is not None and not adx.empty else np.nan
-    
-    # + Close, Open, High, Low, Volume from original fetch makes exactly 50 target points.
-    
     return df.round(2)
 
 def compress(df):
@@ -177,7 +176,7 @@ def compress(df):
 def get_fetch_start():
     if os.path.exists(DATA_FILE):
         try:
-            existing = pd.read_excel(DATA_FILE, sheet_name=SHEET_NAME, usecols=['Date'], engine='openpyxl')
+            existing = pd.read_parquet(DATA_FILE, columns=['Date'])
             existing['Date'] = pd.to_datetime(existing['Date'])
             last_date = existing['Date'].max().date()
             if last_date < date(2026, 1, 1):
@@ -240,15 +239,15 @@ def main():
     result_df = pd.concat(new_frames, ignore_index=True)
     
     if is_incremental and os.path.exists(DATA_FILE):
-        existing_df = pd.read_excel(DATA_FILE, sheet_name=SHEET_NAME, engine='openpyxl')
+        existing_df = pd.read_parquet(DATA_FILE)
         existing_df['Date'] = pd.to_datetime(existing_df['Date']).dt.strftime('%Y-%m-%d')
         overlap_dates = set(result_df['Date'].unique())
         master_df = pd.concat([existing_df[~existing_df['Date'].isin(overlap_dates)], result_df])
     else:
         master_df = result_df
 
-    master_df.sort_values(['Ticker','Date']).to_excel(DATA_FILE, sheet_name=SHEET_NAME, index=False)
-    print("✅ Successfully Updated Master_Data.xlsx")
+    master_df.sort_values(['Ticker','Date']).to_parquet(DATA_FILE, index=False)
+    print("✅ Successfully Updated Master_Data.parquet")
 
 if __name__ == "__main__":
     main()
