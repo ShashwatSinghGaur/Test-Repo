@@ -82,15 +82,14 @@ UNIVERSES = {
 # ═══════════════════════════════════════════════════════════════════════════════
 # DATA LOADING
 # ═══════════════════════════════════════════════════════════════════════════════
-DATA_FILE  = "Master_Data.xlsx"
-SHEET_NAME = "Nifty LMC 250"
+DATA_FILE  = "Master_Data.parquet"
 
-@st.cache_data(ttl=3600, show_spinner="Loading Master_Data.xlsx…")
+@st.cache_data(ttl=3600, show_spinner="Loading Master_Data.parquet…")
 def load_data():
     if not os.path.exists(DATA_FILE):
         return pd.DataFrame(), "FILE_MISSING"
     try:
-        df = pd.read_excel(DATA_FILE, sheet_name=SHEET_NAME, engine="openpyxl")
+        df = pd.read_parquet(DATA_FILE)
         df["Date"] = pd.to_datetime(df["Date"])
         df = df.sort_values(["Ticker", "Date"]).reset_index(drop=True)
         return df, None
@@ -100,7 +99,7 @@ def load_data():
 master_df, err = load_data()
 
 if err == "FILE_MISSING":
-    st.error("### ⚠️ Master_Data.xlsx not found. Please run the GitHub action.")
+    st.error("### ⚠️ Master_Data.parquet not found. Please run the GitHub action.")
     st.stop()
 elif err:
     st.error(f"Error reading data file: {err}")
@@ -305,4 +304,4 @@ with dl1:
 with dl2:
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "rb") as f:
-            st.download_button("📦 Download Full Master_Data.xlsx", data=f.read(), file_name="Master_Data.xlsx", width="stretch")
+            st.download_button("📦 Download Full Master_Data.parquet", data=f.read(), file_name="Master_Data.parquet", width="stretch")
