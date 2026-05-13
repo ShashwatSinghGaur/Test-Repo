@@ -1,0 +1,49 @@
+name: Daily Nifty Data Update
+
+on:
+  schedule:
+    # Runs at 12:30 UTC = 6:00 PM IST, Mon–Fri (after NSE close)
+    - cron: '0 11 * * 1-5'
+  workflow_dispatch: # Allows you to run this manually from the Actions tab
+
+jobs:
+  update-market-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Crucial for allowing the bot to push changes
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }} # Uses the default token for auth[cite: 2]
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt # Installs yfinance, pandas, openpyxl, etc.[cite: 2, 4]
+
+      - name: Run data generator
+        run: python generate_data.py # Executes your fetching and indicator logic[cite: 2]
+
+      - name: Verify Master_Data.xlsx was created
+        run: |
+          if [ ! -f "Master_Data.xlsx" ]; then
+            echo "ERROR: Master_Data.xlsx was not created!"
+            exit 1
+          fi
+          echo "File created successfully:"
+          ls -lh Master_Data.xlsx
+
+      - name: Commit and push updated file
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add Master_Data.xlsx
+          # Only commit if there are actual changes to the file[cite: 2]
+          git diff --staged --quiet || (git commit -m "chore: automated daily market data update" && git push)
