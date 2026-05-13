@@ -2,6 +2,7 @@ name: Daily Nifty Data Update
 
 on:
   schedule:
+    # Runs at 12:30 UTC = 6:00 PM IST, Mon–Fri (after NSE close)
     - cron: '0 11 * * 1-5'
   workflow_dispatch: 
 
@@ -17,10 +18,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }} 
 
-      - name: Set up Python 3.11
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
@@ -30,10 +31,10 @@ jobs:
       - name: Run data generator
         run: python generate_data.py 
 
-      - name: Verify Master_Data.xlsx was created
+      - name: Verify Master_Data.parquet was created
         run: |
-          if [ ! -f "Master_Data.xlsx" ]; then
-            echo "ERROR: Master_Data.xlsx was not created!"
+          if [ ! -f "Master_Data.parquet" ]; then
+            echo "ERROR: Master_Data.parquet was not created!"
             exit 1
           fi
 
@@ -41,5 +42,5 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add Master_Data.xlsx
+          git add Master_Data.parquet
           git diff --staged --quiet || (git commit -m "chore: automated daily market data update" && git push)
