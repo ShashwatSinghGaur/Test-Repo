@@ -251,7 +251,7 @@ st.title("📊 Nifty Technical Screener Pro")
 
 # CUSTOM DISPLAY COLUMNS WIDGET
 st.markdown("### ⚙️ Customize Display Columns")
-default_cols = ["Close Price", "Chg%", "Volume", "RSI 14", "MACD", "ATR 14", "SMA 20", "VWAP"]
+default_cols = ["Close Price", "Chg%", "Volume", "RSI 14", "MACD Line", "ATR 14", "SMA 20", "VWAP"]
 all_ui_labels = [label for col, label in INDICATOR_MAPPINGS] + ["Chg%"]
 
 selected_ui_labels = st.multiselect(
