@@ -109,33 +109,22 @@ elif err:
 # INDICATOR CONFIG & 6 CATEGORIES
 # ═══════════════════════════════════════════════════════════════════════════════
 INDICATOR_MAPPINGS = [
-    # Price
     ("Open", "Open Price"), ("High", "High Price"), ("Low", "Low Price"), ("Close", "Close Price"),
-    
-    # Trend
     ("SMA_20", "SMA 20"), ("SMA_50", "SMA 50"), ("SMA_200", "SMA 200"), 
     ("EMA_20", "EMA 20"), ("EMA_50", "EMA 50"), ("MACD", "MACD Line"), 
     ("MACD_Hist", "MACD Histogram"), ("ADX_14", "ADX 14"), 
     ("Supertrend", "Supertrend"), ("Aroon_Up", "Aroon Up"),
-    
-    # Momentum
     ("RSI_14", "RSI 14"), ("Stoch_K", "Stochastic %K"), ("Stoch_D", "Stochastic %D"),
     ("StochRSI_K", "StochRSI %K"), ("StochRSI_D", "StochRSI %D"), ("CCI_20", "CCI 20"),
     ("WillR_14", "Williams %R"), ("ROC_12", "ROC 12"), ("AO", "Awesome Oscillator"),
     ("MOM_10", "Momentum 10"), ("PPO", "Price Oscillator (PPO)"), ("UO", "Ultimate Oscillator"),
-    
-    # Volatility
     ("ATR_14", "ATR 14"), ("BB_Upper", "Bollinger Upper"), ("BB_Lower", "Bollinger Lower"),
     ("BB_Width", "Bollinger Width"), ("KC_Upper", "Keltner Upper"), ("KC_Lower", "Keltner Lower"),
     ("Donchian_Upper", "Donchian Upper"), ("StdDev_20", "Std Deviation 20"),
-    
-    # Volume
     ("Volume", "Volume"), ("OBV", "On Balance Volume"), ("AD", "Accumulation/Distribution"),
     ("MFI_14", "Money Flow Index"), ("CMF_20", "Chaikin Money Flow"), ("PVT", "Price Volume Trend"),
     ("PVI", "Positive Volume Index"), ("NVI", "Negative Volume Index"), 
     ("VWAP", "VWAP"), ("Vol_SMA_20", "Volume SMA 20"),
-    
-    # System / Risk
     ("TRIX", "TRIX 30"), ("Elder_Bull", "Elder Bull Power"), ("Elder_Bear", "Elder Bear Power"),
     ("+DI_14", "+DI 14"), ("-DI_14", "-DI 14")
 ]
@@ -210,7 +199,6 @@ with st.sidebar:
                     data_min, data_max = float(vals.min()), float(vals.max())
                     step = round((data_max - data_min) / 200, 4) or 0.01
                     
-                    # Exact rounded bounds to prevent float math bugs
                     lo, hi = round(data_min, 2), round(data_max, 2)
                     default_val = (lo, hi)
                     
@@ -218,6 +206,7 @@ with st.sidebar:
                     if sel != default_val:
                         active_slider_filters[col] = sel
                 else:
+                    # Typed Condition Mode
                     op = st.selectbox(label, ["—", ">", "<", ">=", "<=", "=", "Between"], key=f"op_{col}")
                     
                     if op == "Between":
@@ -226,7 +215,6 @@ with st.sidebar:
                         v2 = c2.number_input("To", value=100.0, key=f"v2_{col}")
                         active_cond_filters[col] = ("between", "number", v1, v2)
                     elif op != "—":
-                        # Dynamic target selection based on indicator type
                         target_opts = ["Number"]
                         if col in PRICE_SCALE_INDICATORS:
                             target_opts.extend(["Close", "Open", "High", "Low"])
@@ -234,13 +222,17 @@ with st.sidebar:
                             target_opts.extend(["Volume"])
                             
                         if len(target_opts) > 1:
-                            tgt = st.radio("Compare to:", target_opts, horizontal=True, key=f"tgt_{col}", label_visibility="collapsed")
-                            if tgt == "Number":
-                                v1 = st.number_input("Value", value=0.0, key=f"v_{col}")
-                                active_cond_filters[col] = (op, "number", v1, None)
-                            else:
-                                active_cond_filters[col] = (op, "column", tgt, None)
+                            # UI FIX: Uses a clear dropdown heavily indented, rather than invisible radio buttons
+                            c_space, c_input = st.columns([0.1, 0.9])
+                            with c_input:
+                                tgt = st.selectbox(f"Compare {label} to:", target_opts, key=f"tgt_{col}")
+                                if tgt == "Number":
+                                    v1 = st.number_input(f"Enter target number", value=0.0, key=f"v_{col}")
+                                    active_cond_filters[col] = (op, "number", v1, None)
+                                else:
+                                    active_cond_filters[col] = (op, "column", tgt, None)
                         else:
+                            # Normal numeric input for oscillators (RSI, MACD, etc)
                             v1 = st.number_input("Value", value=0.0, key=f"v_{col}")
                             active_cond_filters[col] = (op, "number", v1, None)
 
