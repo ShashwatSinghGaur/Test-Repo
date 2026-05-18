@@ -108,7 +108,6 @@ elif err:
 # ═══════════════════════════════════════════════════════════════════════════════
 # INDICATOR CONFIG & 6 CATEGORIES
 # ═══════════════════════════════════════════════════════════════════════════════
-# (Column in DataFrame, UI Label)
 INDICATOR_MAPPINGS = [
     # Price
     ("Open", "Open Price"), ("High", "High Price"), ("Low", "Low Price"), ("Close", "Close Price"),
@@ -144,7 +143,6 @@ INDICATOR_MAPPINGS = [
 ind_meta = {k: v for k, v in INDICATOR_MAPPINGS}
 label_to_col = {v: k for k, v in INDICATOR_MAPPINGS}
 
-# Groupings for the Slicers sidebar
 SLICER_GROUPS = {
     "📈 1. Trend Indicators":     ["SMA_20", "SMA_50", "SMA_200", "EMA_20", "EMA_50", "MACD", "MACD_Hist", "ADX_14", "Supertrend", "Aroon_Up"],
     "🚀 2. Momentum & Osc":       ["RSI_14", "Stoch_K", "Stoch_D", "StochRSI_K", "StochRSI_D", "CCI_20", "WillR_14", "ROC_12", "AO", "MOM_10", "PPO", "UO"],
@@ -153,6 +151,17 @@ SLICER_GROUPS = {
     "🧱 5. Price Action":         ["Open", "High", "Low", "Close"],
     "⚖️ 6. System & Risk":        ["TRIX", "Elder_Bull", "Elder_Bear", "+DI_14", "-DI_14"],
 }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DYNAMIC COMPARISON CLASSIFICATIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+PRICE_SCALE_INDICATORS = [
+    "SMA_20", "SMA_50", "SMA_200", "EMA_20", "EMA_50", 
+    "Supertrend", "BB_Upper", "BB_Lower", "KC_Upper", "KC_Lower", 
+    "Donchian_Upper", "VWAP", "Open", "High", "Low", "Close"
+]
+
+VOLUME_SCALE_INDICATORS = ["Vol_SMA_20", "Volume", "OBV"]
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # SIDEBAR
@@ -201,6 +210,7 @@ with st.sidebar:
                     data_min, data_max = float(vals.min()), float(vals.max())
                     step = round((data_max - data_min) / 200, 4) or 0.01
                     
+                    # Exact rounded bounds to prevent float math bugs
                     lo, hi = round(data_min, 2), round(data_max, 2)
                     default_val = (lo, hi)
                     
@@ -209,14 +219,30 @@ with st.sidebar:
                         active_slider_filters[col] = sel
                 else:
                     op = st.selectbox(label, ["—", ">", "<", ">=", "<=", "=", "Between"], key=f"op_{col}")
+                    
                     if op == "Between":
                         c1, c2 = st.columns(2)
                         v1 = c1.number_input("From", value=0.0, key=f"v1_{col}")
                         v2 = c2.number_input("To", value=100.0, key=f"v2_{col}")
-                        active_cond_filters[col] = ("between", v1, v2)
+                        active_cond_filters[col] = ("between", "number", v1, v2)
                     elif op != "—":
-                        v1 = st.number_input(f"Value", value=0.0, key=f"v_{col}")
-                        active_cond_filters[col] = (op, v1, None)
+                        # Dynamic target selection based on indicator type
+                        target_opts = ["Number"]
+                        if col in PRICE_SCALE_INDICATORS:
+                            target_opts.extend(["Close", "Open", "High", "Low"])
+                        elif col in VOLUME_SCALE_INDICATORS:
+                            target_opts.extend(["Volume"])
+                            
+                        if len(target_opts) > 1:
+                            tgt = st.radio("Compare to:", target_opts, horizontal=True, key=f"tgt_{col}", label_visibility="collapsed")
+                            if tgt == "Number":
+                                v1 = st.number_input("Value", value=0.0, key=f"v_{col}")
+                                active_cond_filters[col] = (op, "number", v1, None)
+                            else:
+                                active_cond_filters[col] = (op, "column", tgt, None)
+                        else:
+                            v1 = st.number_input("Value", value=0.0, key=f"v_{col}")
+                            active_cond_filters[col] = (op, "number", v1, None)
 
     if st.button("🔄 Reset All", width="stretch"):
         st.cache_data.clear()
@@ -242,9 +268,19 @@ working = date_filtered.copy()
 for col, (lo, hi) in active_slider_filters.items():
     if col in working.columns: working = working[(working[col] >= lo) & (working[col] <= hi)]
 
-OP_MAP = {">": lambda s,v1,v2: s>v1, "<": lambda s,v1,v2: s<v1, ">=": lambda s,v1,v2: s>=v1, "<=": lambda s,v1,v2: s<=v1, "=": lambda s,v1,v2: s==v1, "between": lambda s,v1,v2: (s>=v1)&(s<=v2)}
-for col, (op, v1, v2) in active_cond_filters.items():
-    if col in working.columns: working = working[OP_MAP[op](working[col], v1, v2)]
+OP_MAP = {
+    ">": lambda s,v1,v2: s>v1, "<": lambda s,v1,v2: s<v1, 
+    ">=": lambda s,v1,v2: s>=v1, "<=": lambda s,v1,v2: s<=v1, 
+    "=": lambda s,v1,v2: s==v1, "between": lambda s,v1,v2: (s>=v1)&(s<=v2)
+}
+
+for col, (op, val_type, v1, v2) in active_cond_filters.items():
+    if col in working.columns:
+        if val_type == "number":
+            working = working[OP_MAP[op](working[col], v1, v2)]
+        elif val_type == "column":
+            if v1 in working.columns:
+                working = working[OP_MAP[op](working[col], working[v1], None)]
 
 filtered = working.copy()
 
